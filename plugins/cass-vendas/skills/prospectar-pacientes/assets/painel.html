@@ -1,0 +1,204 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Prospecção de pacientes</title>
+<!--
+  Modelo do painel da skill prospectar-pacientes. NÃO edite à mão a cada rodada:
+  o script relatorio.py troca o marcador de dados abaixo pelos dados da rodada.
+  Cores: cabeçalho e destaques com fundo forte fixo e letra clara fixa; corpo dos cartões
+  com fundo transparente e letra na cor do tema (claro ou escuro).
+-->
+<style>
+  :root{
+    --fg:#111827; --muted:#4b5563; --line:#d1d5db; --soft:rgba(17,24,39,.04);
+    --verde:#14532d; --e1:#1d4ed8; --e2:#b45309; --e3:#047857; --e4:#7c3aed;
+    --quente:#b91c1c; --morno:#c2410c; --frio:#475569;
+  }
+  @media (prefers-color-scheme: dark){
+    :root{ --fg:#f3f4f6; --muted:#9ca3af; --line:#374151; --soft:rgba(243,244,246,.05);
+      --e1:#60a5fa; --e2:#fbbf24; --e3:#34d399; --e4:#a78bfa; }
+    body{background:#0b0f14}
+  }
+  *{box-sizing:border-box}
+  body{margin:0;font:15px/1.55 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;color:var(--fg)}
+  .wrap{max-width:1080px;margin:0 auto;padding:0 20px 60px}
+  header.topo{background:var(--verde);color:#fff;padding:28px 0 24px;margin-bottom:28px}
+  header.topo .wrap{padding-bottom:0}
+  header.topo h1{margin:0 0 6px;font-size:26px;letter-spacing:-.01em}
+  header.topo p{margin:0;color:#dcfce7}
+  h2{font-size:19px;margin:36px 0 6px}
+  .sub{color:var(--muted);margin:0 0 16px}
+  .kpis{display:grid;grid-template-columns:repeat(4,1fr);gap:12px}
+  .kpi{border:1px solid var(--line);border-radius:10px;padding:14px 16px;background:transparent}
+  .kpi b{display:block;font-size:28px;line-height:1.1}
+  .kpi span{color:var(--muted);font-size:13px}
+  .funil{display:flex;flex-direction:column;gap:8px}
+  .etapa{display:grid;grid-template-columns:230px 1fr;gap:12px;align-items:center}
+  .etapa .rot{font-size:14px}
+  .etapa .rot small{display:block;color:var(--muted)}
+  .barra{height:30px;border-radius:6px;background:var(--verde);color:#fff;display:flex;align-items:center;padding:0 10px;font-weight:600;min-width:44px}
+  .origens{display:grid;grid-template-columns:repeat(4,1fr);gap:12px}
+  .orig{border:1px solid var(--line);border-radius:10px;padding:12px 14px;background:transparent}
+  .orig b{font-size:22px}
+  .chip{display:inline-block;color:#fff;border-radius:999px;padding:1px 9px;font-size:12px;font-weight:600}
+  .c-quente{background:var(--quente)} .c-morno{background:var(--morno)} .c-frio{background:var(--frio)}
+  .elementos{display:grid;grid-template-columns:repeat(4,1fr);gap:12px}
+  .el{border:1px solid var(--line);border-top:5px solid;border-radius:10px;padding:12px 14px;background:transparent}
+  .el h3{margin:0 0 4px;font-size:15px}
+  .el p{margin:0;color:var(--muted);font-size:13.5px}
+  .el1{border-top-color:var(--e1)} .el2{border-top-color:var(--e2)} .el3{border-top-color:var(--e3)} .el4{border-top-color:var(--e4)}
+  .leads{display:flex;flex-direction:column;gap:14px}
+  .card{border:1px solid var(--line);border-radius:12px;background:transparent;overflow:hidden}
+  .card .cab{display:flex;justify-content:space-between;align-items:center;gap:10px;padding:12px 16px;border-bottom:1px solid var(--line)}
+  .card .cab .num{font-weight:700;margin-right:8px}
+  .card .cab a{color:inherit}
+  .card .corpo{display:grid;grid-template-columns:1fr 1.25fr;gap:16px;padding:14px 16px}
+  .card .info p{margin:0 0 8px;font-size:13.5px}
+  .card .info .r{color:var(--muted);display:block;font-size:12px;text-transform:uppercase;letter-spacing:.04em}
+  .msg .seg{border-left:4px solid;padding:3px 10px;margin:0 0 6px;background:var(--soft);border-radius:0 6px 6px 0}
+  .msg .seg small{display:block;font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.04em}
+  .msg .seg.s1{border-left-color:var(--e1)} .msg .seg.s2{border-left-color:var(--e2)} .msg .seg.s3{border-left-color:var(--e3)} .msg .seg.s4{border-left-color:var(--e4)}
+  .botoes{display:flex;gap:8px;margin-top:10px}
+  button,.btn{font:inherit;font-size:13.5px;border:0;border-radius:8px;padding:7px 12px;cursor:pointer;background:var(--verde);color:#fff;text-decoration:none}
+  .btn.sec{background:#374151}
+  .passos{display:grid;grid-template-columns:repeat(4,1fr);gap:12px}
+  .passo{border:1px solid var(--line);border-radius:10px;padding:12px 14px;background:transparent}
+  .passo .dia{display:inline-block;background:var(--verde);color:#fff;border-radius:6px;padding:1px 8px;font-size:12px;font-weight:700;margin-bottom:6px}
+  .passo p{margin:0;font-size:13.5px}
+  .descartes{columns:2;font-size:13.5px;color:var(--muted)}
+  footer{margin-top:40px;color:var(--muted);font-size:12.5px}
+  @media (max-width:820px){.kpis,.origens,.elementos,.passos{grid-template-columns:1fr 1fr}.card .corpo{grid-template-columns:1fr}.etapa{grid-template-columns:1fr}}
+</style>
+</head>
+<body>
+<header class="topo"><div class="wrap">
+  <h1 id="titulo">Prospecção de pacientes</h1>
+  <p id="subtitulo"></p>
+</div></header>
+<main class="wrap">
+
+  <section>
+    <div class="kpis" id="kpis"></div>
+  </section>
+
+  <section>
+    <h2>Como a lista foi montada</h2>
+    <p class="sub">Cada etapa filtra a anterior. No fim sobra só quem vale a sua mensagem.</p>
+    <div class="funil" id="funil"></div>
+  </section>
+
+  <section>
+    <h2>De onde vieram as pessoas</h2>
+    <p class="sub">Quem comentou está mais perto de responder do que quem só curtiu. Quem já interage com você está mais perto do que quem veio de um concorrente.</p>
+    <div class="origens" id="origens"></div>
+  </section>
+
+  <section>
+    <h2>Os 4 elementos da primeira mensagem</h2>
+    <p class="sub">Toda mensagem abaixo tem estas quatro partes, cada uma com a sua cor. O objetivo da primeira mensagem é só a pessoa responder: nada de oferta, link ou consulta.</p>
+    <div class="elementos">
+      <div class="el el1"><h3>1. Nome + hora do dia</h3><p>"Oi, Carol, boa tarde!" Mostra que é uma pessoa escrevendo, não um robô.</p></div>
+      <div class="el el2"><h3>2. O motivo</h3><p>Por que você está chamando agora. Se ela interagiu no seu perfil, diga o que ela fez. Se veio de concorrente, o motivo sai do perfil dela.</p></div>
+      <div class="el el3"><h3>3. O relacionamento</h3><p>Um fato do perfil dela e, se couber, uma pergunta leve sobre esse fato. Nunca sobre dificuldade ou hábito.</p></div>
+      <div class="el el4"><h3>4. O dia + o tchau</h3><p>"Se precisar de algo, conta comigo. Uma boa terça pra vc!" Fecha leve, sem cobrar resposta.</p></div>
+    </div>
+  </section>
+
+  <section>
+    <h2>Leads de hoje, na ordem de envio</h2>
+    <p class="sub">Copie a mensagem, abra o perfil, cole no Direct e envie. Depois avise no chat quais você mandou (ex.: 1, 3, 5).</p>
+    <div class="leads" id="leads"></div>
+  </section>
+
+  <section>
+    <h2>Depois de enviar</h2>
+    <div class="passos">
+      <div class="passo"><span class="dia">Dia 0</span><p>Envie as mensagens e avise quais foram. O registro guarda para não sugerir de novo.</p></div>
+      <div class="passo"><span class="dia">Respondeu</span><p>Responda do tamanho que ela respondeu e faça uma pergunta fácil. Quando ela contar uma dificuldade, acolha e ofereça ajuda dizendo o que ela ganha.</p></div>
+      <div class="passo"><span class="dia">Dia 3</span><p>Sem resposta? Não mande outra mensagem. Responda um story ou comente um post dela. Perfil fechado: pule este toque.</p></div>
+      <div class="passo"><span class="dia">7 dias depois</span><p>Do toque no conteúdo, ainda sem resposta? Encerre e vá para a próxima pessoa. Não insista uma terceira vez.</p></div>
+    </div>
+  </section>
+
+  <section>
+    <h2>Quem ficou de fora e por quê</h2>
+    <ul class="descartes" id="descartes"></ul>
+  </section>
+
+  <footer id="rodape"></footer>
+</main>
+<script>
+const DADOS = /*DADOS*/null;
+const $ = (id) => document.getElementById(id);
+const esc = (s) => String(s ?? "").replace(/[&<>"]/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;"}[c]));
+const num = (n) => (n ?? 0).toLocaleString("pt-BR");
+
+$("titulo").textContent = `Prospecção de pacientes · @${DADOS.perfil}`;
+$("subtitulo").textContent = `Rodada de ${DADOS.gerado} (horário de Brasília)` + (DADOS.publico ? ` · Público: ${DADOS.publico}` : "");
+
+const f = DADOS.funil;
+$("kpis").innerHTML = [
+  [DADOS.posts, "posts lidos"], [f.interacoes_lidas, "curtidas e comentários"],
+  [f.passaram_no_filtro, "pessoas que passaram no filtro"], [DADOS.leads.length, "com mensagem pronta hoje"],
+].map(([n, r]) => `<div class="kpi"><b>${num(n)}</b><span>${r}</span></div>`).join("");
+
+const etapas = [
+  [f.interacoes_lidas, "Interações lidas", "curtidas e comentários nos posts"],
+  [f.pessoas_unicas, "Pessoas diferentes", "sem repetir quem interagiu mais de uma vez"],
+  [f.conferidas, "Perfis conferidos", "seguidores e bio de cada pessoa nova (até o limite da rodada)"],
+  ...((f.vieram_da_fila_da_rodada_anterior || 0) + (f.vistos_antes_sem_mensagem || 0) ? [[
+    (f.vieram_da_fila_da_rodada_anterior || 0) + (f.vistos_antes_sem_mensagem || 0), "Somadas de rodadas anteriores",
+    "pessoas que ficaram para depois ou ainda não tinham mensagem (não saem das etapas acima)"]] : []),
+  [f.passaram_no_filtro, "Passaram no filtro", `mais de ${num(DADOS.minimo)} seguidores, não vende na mesma área, não é marca`],
+  [DADOS.leads.length, "Lista de hoje", "as melhores, com mensagem pronta"],
+];
+const topo = Math.max(1, etapas[0][0]);
+$("funil").innerHTML = etapas.map(([n, r, s]) =>
+  `<div class="etapa"><div class="rot">${r}<small>${s}</small></div>
+   <div><div class="barra" style="width:${Math.max(4, 100 * n / topo)}%">${num(n)}</div></div></div>`).join("");
+
+const calor = {"Comentou no seu":"c-quente","Curtiu no seu":"c-morno","Comentou em concorrente":"c-morno","Curtiu em concorrente":"c-frio"};
+$("origens").innerHTML = Object.entries(DADOS.por_origem).map(([r, n]) =>
+  `<div class="orig"><span class="chip ${calor[r]}">${r}</span><div><b>${num(n)}</b> pessoas</div></div>`).join("");
+
+const rot = ["Nome + hora", "O motivo", "O relacionamento", "O dia + o tchau"];
+$("leads").innerHTML = DADOS.leads.map(l => {
+  const chip = l.origem === "seu perfil" ? `<span class="chip c-quente">Seu perfil</span>` : `<span class="chip c-frio">Concorrente</span>`;
+  const segs = l.partes.map((t, i) => `<div class="seg s${i + 1}"><small>${rot[i]}</small>${esc(t)}</div>`).join("");
+  return `<article class="card">
+    <div class="cab"><div><span class="num">${l.n}.</span><b>${esc(l.nome || l.perfil)}</b> · <a href="${esc(l.link)}" target="_blank" rel="noopener">@${esc(l.perfil)}</a></div>
+      <div>${chip} <span class="chip c-frio">${num(l.seguidores)} seguidores</span></div></div>
+    <div class="corpo">
+      <div class="info">
+        <p><span class="r">O que ela fez</span>${esc(l.fez).replace(/\n/g, "<br>")}</p>
+        <p><span class="r">Por que ela</span>${esc(l.porque)}</p>
+      </div>
+      <div class="msg">${segs}
+        <div class="botoes"><button data-n="${l.n}">Copiar mensagem</button>
+        <a class="btn sec" href="${esc(l.link)}" target="_blank" rel="noopener">Abrir perfil</a></div>
+      </div>
+    </div></article>`;
+}).join("");
+document.querySelectorAll("button[data-n]").forEach(b => b.addEventListener("click", async () => {
+  const l = DADOS.leads.find(x => x.n == b.dataset.n);
+  const texto = l.partes.join("\n");
+  let ok = false;
+  try { await navigator.clipboard.writeText(texto); ok = true; }
+  catch (e) {
+    const t = document.createElement("textarea"); t.value = texto; document.body.appendChild(t); t.select();
+    try { ok = document.execCommand("copy"); } catch (e2) { ok = false; }
+    t.remove();
+  }
+  b.textContent = ok ? "Copiada!" : "Não copiou: selecione o texto ao lado e copie";
+  setTimeout(() => b.textContent = "Copiar mensagem", ok ? 1600 : 4000);
+}));
+
+const d = Object.entries(DADOS.descartes).sort((a, b) => b[1] - a[1]);
+$("descartes").innerHTML = d.length ? d.map(([m, n]) => `<li><b>${num(n)}</b> · ${esc(m)}</li>`).join("")
+  : "<li>Ninguém foi descartado nesta rodada.</li>";
+$("rodape").textContent = `Contas lidas: ${DADOS.contas.join(", ")}. Gerado pela skill prospectar-pacientes. Só dados públicos; nenhuma mensagem foi enviada automaticamente.`;
+</script>
+</body>
+</html>

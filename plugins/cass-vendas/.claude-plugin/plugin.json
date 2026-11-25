@@ -1,0 +1,12 @@
+{
+  "name": "cass-vendas",
+  "version": "0.1.0",
+  "description": "Prospecção de pacientes no Instagram para nutricionistas: acha quem curtiu e comentou no seu perfil e nos concorrentes, escreve a primeira mensagem e acompanha as retomadas.",
+  "author": {
+    "name": "Cassiano Diniz",
+    "url": "https://github.com/cassianodiniz"
+  },
+  "homepage": "https://github.com/cassianodiniz/cass-vendas",
+  "repository": "https://github.com/cassianodiniz/cass-vendas",
+  "keywords": ["nutricionista", "instagram", "prospecção", "vendas", "apify"]
+}
