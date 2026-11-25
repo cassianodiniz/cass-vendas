@@ -15,14 +15,15 @@
     --fg:#111827; --muted:#4b5563; --line:#d1d5db; --soft:rgba(17,24,39,.04);
     --verde:#14532d; --e1:#1d4ed8; --e2:#b45309; --e3:#047857; --e4:#7c3aed;
     --quente:#b91c1c; --morno:#c2410c; --frio:#475569;
+    --bg:#fafafa; --acao:#1d4ed8; --ok:#047857;
+    color-scheme: light dark;
   }
   @media (prefers-color-scheme: dark){
     :root{ --fg:#f3f4f6; --muted:#9ca3af; --line:#374151; --soft:rgba(243,244,246,.05);
-      --e1:#60a5fa; --e2:#fbbf24; --e3:#34d399; --e4:#a78bfa; }
-    body{background:#0b0f14}
+      --e1:#60a5fa; --e2:#fbbf24; --e3:#34d399; --e4:#a78bfa; --bg:#0b0f14; }
   }
   *{box-sizing:border-box}
-  body{margin:0;font:15px/1.55 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;color:var(--fg)}
+  body{margin:0;background:var(--bg);font:15px/1.55 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;color:var(--fg)}
   .wrap{max-width:1080px;margin:0 auto;padding:0 20px 60px}
   header.topo{background:var(--verde);color:#fff;padding:28px 0 24px;margin-bottom:28px}
   header.topo .wrap{padding-bottom:0}
@@ -63,6 +64,20 @@
   .botoes{display:flex;gap:8px;margin-top:10px}
   button,.btn{font:inherit;font-size:13.5px;border:0;border-radius:8px;padding:7px 12px;cursor:pointer;background:var(--verde);color:#fff;text-decoration:none}
   .btn.sec{background:#374151}
+  .barra-filtro{position:sticky;top:0;z-index:5;display:flex;flex-wrap:wrap;gap:8px;align-items:center;padding:10px 0;margin-bottom:12px;background:var(--bg);border-bottom:1px solid var(--line)}
+  .barra-filtro button{background:transparent;color:inherit;border:1px solid var(--line)}
+  .barra-filtro button.on{background:var(--verde);color:#fff;border-color:var(--verde)}
+  .barra-filtro .esp{flex:1}
+  .barra-filtro .copiar{background:var(--acao);color:#fff;border:0}
+  button.st{background:transparent;color:inherit;border:1px solid var(--line)}
+  button.st.ab.on{background:var(--ok);color:#fff;border-color:var(--ok)}
+  button.st.ig.on{background:var(--frio);color:#fff;border-color:var(--frio)}
+  .card.s-abordei{opacity:.75;border-left:5px solid var(--e3)}
+  .card.s-ignorado{opacity:.5;border-left:5px solid var(--frio)}
+  button:active,.btn:active{transform:translateY(1px) scale(.98)}
+  button,.btn{transition:transform .15s cubic-bezier(.16,1,.3,1),background-color .15s,opacity .15s}
+  .card.oculto{display:none}
+  .vazio{color:var(--muted);padding:16px 0}
   .passos{display:grid;grid-template-columns:repeat(4,1fr);gap:12px}
   .passo{border:1px solid var(--line);border-radius:10px;padding:12px 14px;background:transparent}
   .passo .dia{display:inline-block;background:var(--verde);color:#fff;border-radius:6px;padding:1px 8px;font-size:12px;font-weight:700;margin-bottom:6px}
@@ -108,8 +123,10 @@
 
   <section>
     <h2>Leads de hoje, na ordem de envio</h2>
-    <p class="sub">Copie a mensagem, abra o perfil, cole no Direct e envie. Depois avise no chat quais você mandou (ex.: 1, 3, 5).</p>
+    <p class="sub">Copie a mensagem, abra o perfil, cole no Direct e envie. Marque <b>Abordei</b> ou <b>Ignorado</b> em cada lead (o painel lembra neste navegador). Depois use <b>Copiar para a skill</b> e cole no chat.</p>
+    <div class="barra-filtro" id="filtros"></div>
     <div class="leads" id="leads"></div>
+    <p class="vazio" id="vazio" hidden>Nenhum lead neste filtro.</p>
   </section>
 
   <section>
@@ -167,7 +184,7 @@ const rot = ["Nome + hora", "O motivo", "O relacionamento", "O dia + o tchau"];
 $("leads").innerHTML = DADOS.leads.map(l => {
   const chip = l.origem === "seu perfil" ? `<span class="chip c-quente">Seu perfil</span>` : `<span class="chip c-frio">Concorrente</span>`;
   const segs = l.partes.map((t, i) => `<div class="seg s${i + 1}"><small>${rot[i]}</small>${esc(t)}</div>`).join("");
-  return `<article class="card">
+  return `<article class="card" id="lead-${l.n}">
     <div class="cab"><div><span class="num">${l.n}.</span><b>${esc(l.nome || l.perfil)}</b> · <a href="${esc(l.link)}" target="_blank" rel="noopener">@${esc(l.perfil)}</a></div>
       <div>${chip} <span class="chip c-frio">${num(l.seguidores)} seguidores</span></div></div>
     <div class="corpo">
@@ -177,11 +194,66 @@ $("leads").innerHTML = DADOS.leads.map(l => {
       </div>
       <div class="msg">${segs}
         <div class="botoes"><button data-n="${l.n}">Copiar mensagem</button>
-        <a class="btn sec" href="${esc(l.link)}" target="_blank" rel="noopener">Abrir perfil</a></div>
+        <a class="btn sec" href="${esc(l.link)}" target="_blank" rel="noopener">Abrir perfil</a>
+        <button class="st ab" data-st="abordei" data-n="${l.n}" data-status>Abordei</button>
+        <button class="st ig" data-st="ignorado" data-n="${l.n}" data-status>Ignorado</button></div>
       </div>
     </div></article>`;
 }).join("");
-document.querySelectorAll("button[data-n]").forEach(b => b.addEventListener("click", async () => {
+// ---- status (Abordei / Ignorado), filtro e "Copiar para a skill" ----
+const CHAVE = `prospectar-pacientes:${DADOS.perfil}:${DADOS.rodada}`;
+let status = {};
+try { status = JSON.parse(localStorage.getItem(CHAVE) || "{}"); } catch (e) { status = {}; }
+let filtro = "todos";
+const FILTROS = [["todos", "Todos"], ["pendentes", "Pendentes"], ["abordei", "Abordei"], ["ignorado", "Ignorado"]];
+const doLead = (l) => status[l.perfil] || "";
+function pinta() {
+  const cont = {todos: DADOS.leads.length, pendentes: 0, abordei: 0, ignorado: 0};
+  DADOS.leads.forEach(l => { const s = doLead(l); cont[s || "pendentes"]++; });
+  $("filtros").innerHTML = FILTROS.map(([k, r]) =>
+    `<button data-filtro="${k}" class="${filtro === k ? "on" : ""}">${r} (${cont[k]})</button>`).join("")
+    + `<span class="esp"></span><button class="copiar" id="copiar-skill">Copiar para a skill</button>`;
+  let visiveis = 0;
+  DADOS.leads.forEach(l => {
+    const s = doLead(l), el = $(`lead-${l.n}`);
+    const mostra = filtro === "todos" || (filtro === "pendentes" ? !s : s === filtro);
+    el.classList.toggle("oculto", !mostra);
+    el.classList.toggle("s-abordei", s === "abordei");
+    el.classList.toggle("s-ignorado", s === "ignorado");
+    el.querySelectorAll("button[data-status]").forEach(b => b.classList.toggle("on", b.dataset.st === s));
+    if (mostra) visiveis++;
+  });
+  $("vazio").hidden = visiveis > 0;
+  document.querySelectorAll("button[data-filtro]").forEach(b => b.addEventListener("click", () => { filtro = b.dataset.filtro; pinta(); }));
+  $("copiar-skill").addEventListener("click", copiaParaSkill);
+}
+function textoParaSkill() {
+  const por = (s) => DADOS.leads.filter(l => doLead(l) === s).map(l => `@${l.perfil}`);
+  const ab = por("abordei"), ig = por("ignorado");
+  return [ab.length ? `abordei: ${ab.join(" ")}` : "", ig.length ? `ignorado: ${ig.join(" ")}` : ""].filter(Boolean).join("\n");
+}
+async function copiaParaSkill() {
+  const b = $("copiar-skill"), texto = textoParaSkill();
+  if (!texto) { b.textContent = "Marque algum lead antes"; setTimeout(pinta, 1800); return; }
+  let ok = false;
+  try { await navigator.clipboard.writeText(texto); ok = true; }
+  catch (e) {
+    const t = document.createElement("textarea"); t.value = texto; document.body.appendChild(t); t.select();
+    try { ok = document.execCommand("copy"); } catch (e2) { ok = false; }
+    t.remove();
+  }
+  b.textContent = ok ? "Copiado! Cole no chat" : "Não copiou: " + texto.replace(/\n/g, " / ");
+  setTimeout(pinta, ok ? 2200 : 6000);
+}
+document.querySelectorAll("button[data-status]").forEach(b => b.addEventListener("click", () => {
+  const l = DADOS.leads.find(x => x.n == b.dataset.n);
+  if (status[l.perfil] === b.dataset.st) delete status[l.perfil]; else status[l.perfil] = b.dataset.st;
+  try { localStorage.setItem(CHAVE, JSON.stringify(status)); } catch (e) { /* sem armazenamento: vale só nesta aba */ }
+  pinta();
+}));
+pinta();
+
+document.querySelectorAll("button[data-n]:not([data-status])").forEach(b => b.addEventListener("click", async () => {
   const l = DADOS.leads.find(x => x.n == b.dataset.n);
   const texto = l.partes.join("\n");
   let ok = false;

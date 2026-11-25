@@ -13,6 +13,7 @@ própria nutricionista. Não entra no Instagram e não usa a conta de ninguém.
     python3 prospectar.py ler-perfil [@perfil]       # bio e posts recentes, para entender o público-alvo
     python3 prospectar.py estimar [opções do coletar]
     python3 prospectar.py coletar [--posts 2] [--curtidas 60] [--comentarios 40] [--max-perfis 120]
+    python3 prospectar.py conferir-fila [--max-perfis 120] [--so-estimar]   # confere só quem está na fila, sem reler posts
     python3 prospectar.py relatorio --mensagens mensagens.json [--rodada ultima]
     python3 prospectar.py marcar --status abordado @a @b [--obs "..."]
     python3 prospectar.py pendentes
@@ -370,6 +371,27 @@ def estimativa(a, n_contas: int) -> dict:
                           "teto_usd: o máximo que o script deixa o Apify cobrar nesta rodada, somando as 4 chamadas."}
 
 
+def estimativa_fila(a) -> dict:
+    """Custo de conferir só a fila (sem ler posts nem interações)."""
+    cfg = config()
+    pasta = pasta_do_perfil(cfg)
+    reg = ler_json(pasta / "registro.json", {})
+    fila = [p for p in ler_json(pasta / "fila.json", {}) if p not in reg]
+    n = min(len(fila), a.max_perfis)
+    return {"na_fila": len(fila), "perfis_conferidos_no_maximo": n,
+            "custo_provavel_usd": round(n * PRECO[PERFIS], 2),
+            "teto_usd": round(max(n * PRECO[PERFIS] * 1.5, TETO_MINIMO) if n else 0, 2),
+            "explicacao": "conferir-fila só confere bio e seguidores de quem está na fila. Não lê posts nem curtidas."}
+
+
+def cmd_conferir_fila(a) -> int:
+    a.so_fila = True
+    if a.so_estimar:
+        mostrar(estimativa_fila(a))
+        return 0
+    return cmd_coletar(a)
+
+
 def cmd_estimar(a) -> int:
     cfg = config()
     pasta_do_perfil(cfg)
@@ -449,44 +471,48 @@ def para_registro(ficha: dict) -> dict:
 def cmd_coletar(a) -> int:
     cfg = config()
     pasta = pasta_do_perfil(cfg)
-    contas = contas_alvo(a, cfg)
-    est = estimativa(a, len(contas))
+    so_fila = getattr(a, "so_fila", False)
+    contas = [] if so_fila else contas_alvo(a, cfg)
+    est = estimativa_fila(a) if so_fila else estimativa(a, len(contas))
     reg = ler_json(pasta / "registro.json", {})
     momento = agora()
 
-    # 1. Posts recentes de cada conta (pula fixados e posts sem interação).
-    t = tetos(a, len(contas))
-    brutos = apify(POSTS, {"username": [c for c, _ in contas], "resultsLimit": a.posts + 3}, teto_usd=t["posts"])
-    lado = {c: t for c, t in contas}
-    escolhidos: dict[str, list[dict]] = {c: [] for c, _ in contas}
-    for p in sorted(brutos, key=lambda p: p.get("timestamp") or "", reverse=True):
-        dono = (p.get("ownerUsername") or "").lower()
-        if dono in escolhidos and not p.get("isPinned") and len(escolhidos[dono]) < a.posts \
-                and ((p.get("likesCount") or 0) + (p.get("commentsCount") or 0)) > 0:
-            escolhidos[dono].append(p)
-    posts = {p["url"].rstrip("/"): {"conta": d, "lado": lado[d], "legenda": " ".join((p.get("caption") or "").split())[:160]}
-             for d, ps in escolhidos.items() for p in ps}
-    sem_posts = [c for c, ps in escolhidos.items() if not ps]
-    if not posts:
-        sair("nenhum post com interação nas contas lidas (perfis fechados ou sem posts?): " + ", ".join(sem_posts))
+    if so_fila:  # conferir-fila: não lê posts nem interações; só confere os perfis que estão na fila
+        posts, sem_posts, interacoes = {}, [], []
+    else:
+        # 1. Posts recentes de cada conta (pula fixados e posts sem interação).
+        t = tetos(a, len(contas))
+        brutos = apify(POSTS, {"username": [c for c, _ in contas], "resultsLimit": a.posts + 3}, teto_usd=t["posts"])
+        lado = {c: t for c, t in contas}
+        escolhidos: dict[str, list[dict]] = {c: [] for c, _ in contas}
+        for p in sorted(brutos, key=lambda p: p.get("timestamp") or "", reverse=True):
+            dono = (p.get("ownerUsername") or "").lower()
+            if dono in escolhidos and not p.get("isPinned") and len(escolhidos[dono]) < a.posts \
+                    and ((p.get("likesCount") or 0) + (p.get("commentsCount") or 0)) > 0:
+                escolhidos[dono].append(p)
+        posts = {p["url"].rstrip("/"): {"conta": d, "lado": lado[d], "legenda": " ".join((p.get("caption") or "").split())[:160]}
+                 for d, ps in escolhidos.items() for p in ps}
+        sem_posts = [c for c, ps in escolhidos.items() if not ps]
+        if not posts:
+            sair("nenhum post com interação nas contas lidas (perfis fechados ou sem posts?): " + ", ".join(sem_posts))
 
-    # 2. Quem curtiu e quem comentou.
-    urls = list(posts)
-    interacoes: list[dict] = []
-    for tipo, limite, chave in (("comentou", a.comentarios, "comments"), ("curtiu", a.curtidas, "likes")):
-        if limite <= 0:
-            continue
-        teto = min(t["comentarios" if chave == "comments" else "curtidas"], len(urls) * limite * PRECO[ENGAJAMENTO] * 1.5)
-        for x in apify(ENGAJAMENTO, {"Posts": [u + "/" for u in urls], "resultsLimit": limite, "dataToScrape": chave}, teto):
-            user = (x.get("user.username") or "").lower()
-            info = posts.get((x.get("link_post") or "").rstrip("/"))
-            if not user or not info:
+        # 2. Quem curtiu e quem comentou.
+        urls = list(posts)
+        interacoes: list[dict] = []
+        for tipo, limite, chave in (("comentou", a.comentarios, "comments"), ("curtiu", a.curtidas, "likes")):
+            if limite <= 0:
                 continue
-            interacoes.append({"perfil": user, "tipo": tipo, "conta": info["conta"], "lado": info["lado"],
-                               "post": (x.get("link_post") or "").rstrip("/") + "/", "legenda_do_post": info["legenda"],
-                               "comentario": (x.get("text") or "")[:300] if tipo == "comentou" else "",
-                               "privado": x.get("user.is_private"), "verificado": x.get("user.is_verified"),
-                               "nome": x.get("user.full_name") or ""})
+            teto = min(t["comentarios" if chave == "comments" else "curtidas"], len(urls) * limite * PRECO[ENGAJAMENTO] * 1.5)
+            for x in apify(ENGAJAMENTO, {"Posts": [u + "/" for u in urls], "resultsLimit": limite, "dataToScrape": chave}, teto):
+                user = (x.get("user.username") or "").lower()
+                info = posts.get((x.get("link_post") or "").rstrip("/"))
+                if not user or not info:
+                    continue
+                interacoes.append({"perfil": user, "tipo": tipo, "conta": info["conta"], "lado": info["lado"],
+                                   "post": (x.get("link_post") or "").rstrip("/") + "/", "legenda_do_post": info["legenda"],
+                                   "comentario": (x.get("text") or "")[:300] if tipo == "comentou" else "",
+                                   "privado": x.get("user.is_private"), "verificado": x.get("user.is_verified"),
+                                   "nome": x.get("user.full_name") or ""})
 
     # 3. Pessoas novas: tira as próprias contas lidas e quem já está no registro.
     lidas = {c for c, _ in contas}
@@ -511,6 +537,8 @@ def cmd_coletar(a) -> int:
     fila = sorted(novos, key=lambda p: (-max(CALOR[(i["lado"], i["tipo"])] for i in novos[p]),
                                         bool(novos[p][0]["privado"]), -len(novos[p])))
     conferir, sobra = fila[:a.max_perfis], fila[a.max_perfis:]
+    if so_fila and not conferir:
+        sair("a fila está vazia: ninguém para conferir. Rode: coletar")
 
     # 4. Conferir seguidores e bio de quem sobrou.
     achados = {}
@@ -754,6 +782,10 @@ def main() -> int:
         s.add_argument("--so-eu", action="store_true")
         s.add_argument("--so-concorrentes", action="store_true")
         s.set_defaults(f=func)
+    s = sub.add_parser("conferir-fila", help="confere só quem está na fila (fila.json), sem ler posts nem curtidas")
+    s.add_argument("--max-perfis", type=int, default=120, help="pessoas conferidas no máximo (padrão 120)")
+    s.add_argument("--so-estimar", action="store_true", help="mostra o custo e não gasta nada")
+    s.set_defaults(f=cmd_conferir_fila)
     s = sub.add_parser("relatorio")
     s.add_argument("--mensagens", required=True, help="JSON {\"@perfil\": {\"partes\": [4 textos], \"porque\": \"...\"}}")
     s.add_argument("--rodada", default="ultima")

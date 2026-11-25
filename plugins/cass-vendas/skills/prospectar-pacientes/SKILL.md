@@ -19,6 +19,8 @@ Todos os comandos são de `scripts/prospectar.py` (rode com `python3` a partir d
 | "enviei a 1, 3 e 5", "a fulana respondeu", "essa pediu pra parar" | Registrar |
 | "quem falta retomar" | Pendentes |
 | "como foi a semana" | Resumo |
+| "como está a fila", "confere a fila", "tem mais gente?" | Fila |
+| Cola `abordei: @a @b` e `ignorado: @c` (vem do botão "Copiar para a skill" do painel) | Registrar |
 
 ## Rodada
 
@@ -82,7 +84,7 @@ Abra `references/abordagem.md` e siga. Depois:
 
 1. Abra o painel no navegador (`open` no Mac, `start` no Windows) e diga onde estão a planilha e o painel (caminho completo).
 2. No chat, uma linha por pessoa, numerada, na ordem de envio: nome, link do perfil, de onde veio e, em uma frase, por que ela. Logo abaixo, a mensagem num bloco só dela, pronta para copiar.
-3. Feche com: "Me diz quais você enviou (ex.: 1, 3, 5) que eu registro."
+3. Feche com: "No painel, marque Abordei ou Ignorado em cada lead e use Copiar para a skill, depois cole aqui. Ou me diz quais você enviou (ex.: 1, 3, 5) que eu registro."
 
 Se a coleta devolveu poucos leads, diga por quê com os números do `funil` e de `descartes_por_motivo`, e sugira ler mais posts ou outro concorrente. Não baixe o mínimo de seguidores por conta própria.
 
@@ -92,6 +94,7 @@ Ela pede para ver a lista de novo: abra o painel da rodada (está na pasta). Rod
 
 Ela fala em números ("enviei a 1, 3 e 5"): os números são os da última lista que você entregou (a do painel e da planilha). Troque cada número pelo @ antes de marcar. Sem a lista na conversa, abra o painel da última rodada e confirme os @ com ela.
 
+- Ela cola o texto do painel (`abordei: @a @b` e `ignorado: @c`): rode `marcar @a @b --status abordado` para a linha `abordei` e `marcar @c --status descartado --obs "ignorado no painel"` para a linha `ignorado`. Ignorado nunca volta para a lista. O painel guarda os cliques só no navegador dela; o registro só muda quando ela cola o texto aqui.
 - Enviou: `marcar @a @b --status abordado`.
 - Respondeu: `marcar @a --status respondeu`. Ajude na conversa com a seção "Depois que ela responde" de `references/abordagem.md`.
 - Fechou consulta: `marcar @a --status virou-paciente`.
@@ -104,6 +107,15 @@ Rode `pendentes`.
 - `interagir_no_conteudo_hoje`: abordadas há 3 dias ou mais, sem resposta. Não é outra mensagem no Direct. Entregue o link do perfil e uma sugestão de resposta a um story ou comentário num post recente dela. Ela faz e você marca `marcar @a --status segundo-toque`. Perfil fechado, sem conteúdo visível: não há toque possível; marque `marcar @a --status segundo-toque --obs "fechado, sem toque"` para contar os 7 dias.
 - `encerrar`: segundo toque há 7 dias sem resposta. Marque `marcar @a --status encerrado`.
 - `sugeridos_sem_retorno`: pergunte se ela enviou alguma dessas.
+
+## Fila
+
+A fila é o arquivo `~/prospectar-pacientes/<perfil>/fila.json`: pessoas que já foram lidas (curtiram ou comentaram) mas ainda não tiveram bio e seguidores conferidos, porque a rodada tem um limite de perfis conferidos (`--max-perfis`, padrão 120). O `coletar` já puxa a fila sozinha no começo de cada rodada.
+
+1. Conte a fila: `conferir-fila --so-estimar` mostra quantas pessoas há (`na_fila`) e o custo (`custo_provavel_usd`, `teto_usd`). Não gasta nada.
+2. Diga a ela o custo e o saldo (`status`) e pergunte se pode rodar.
+3. Com o sim: `conferir-fila` (aceita `--max-perfis`). Confere só os perfis da fila, sem ler posts nem curtidas, e devolve os leads no mesmo formato do `coletar`. Fila vazia: ele para e avisa.
+4. Siga pelo passo 5 da Rodada (escolher e escrever).
 
 ## Resumo
 

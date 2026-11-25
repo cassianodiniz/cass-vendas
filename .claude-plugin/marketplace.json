@@ -5,14 +5,14 @@
   },
   "metadata": {
     "description": "Skills de vendas para nutricionistas, do Cassiano Diniz.",
-    "version": "0.1.0"
+    "version": "0.2.0"
   },
   "plugins": [
     {
       "name": "cass-vendas",
       "source": "./plugins/cass-vendas",
       "description": "Prospecção de pacientes no Instagram para nutricionistas: acha quem curtiu e comentou no seu perfil e nos concorrentes, escreve a primeira mensagem e acompanha as retomadas.",
-      "version": "0.1.0",
+      "version": "0.2.0",
       "category": "productivity",
       "keywords": ["nutricionista", "instagram", "prospecção", "vendas", "apify"]
     }
